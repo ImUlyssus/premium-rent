@@ -3,19 +3,26 @@
 const fs = require('fs');
 const path = require('path');
 const Sequelize = require('sequelize');
-const process = require('process');
 const basename = path.basename(__filename);
 const env = process.env.NODE_ENV || 'development';
-const config = require(__dirname + '/../config/config.json')[env];
+
+// This is the line you correctly identified to change.
+// It now requires our JavaScript config file.
+const config = require(__dirname + '/../config/config.js')[env];
+
 const db = {};
 
 let sequelize;
+// This logic correctly initializes the Sequelize connection
+// using the configuration object we just loaded.
 if (config.use_env_variable) {
   sequelize = new Sequelize(process.env[config.use_env_variable], config);
 } else {
   sequelize = new Sequelize(config.database, config.username, config.password, config);
 }
 
+// This part of the code reads all other model files in the current directory,
+// imports them, and adds them to the 'db' object.
 fs
   .readdirSync(__dirname)
   .filter(file => {
@@ -31,6 +38,8 @@ fs
     db[model.name] = model;
   });
 
+// This part runs the .associate() method from each model,
+// which is how you will set up relationships like .hasMany() and .belongsTo().
 Object.keys(db).forEach(modelName => {
   if (db[modelName].associate) {
     db[modelName].associate(db);
