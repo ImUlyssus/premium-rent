@@ -143,3 +143,55 @@ npm run dev
 # The application will be available at http://localhost:5173
 ```
 
+
+## Scalability & Future Improvements
+
+### How to Scale to 1,000+ Properties
+
+This architecture is designed with specific, scalable technologies to handle significant growth.
+
+1.  **Asynchronous Task Processing with Queues:** For slow or non-critical operations (like generating reports or syncing with third-party APIs), we will use **AWS SQS (Simple Queue Service)**. The API will add a job to the queue, and a separate worker service will process it asynchronously. This prevents API timeouts and ensures the application remains responsive.
+
+2.  **Caching:** A caching layer will be implemented using **Redis** (deployed on AWS ElastiCache). Frequently accessed, non-critical data (like property lists or user permissions) will be stored in this in-memory cache to dramatically reduce database load and improve API response times.
+
+3.  **Database Optimization:**
+    *   **Indexing:** We will add indexes to key columns in our PostgreSQL tables, such as the `status` column on `Properties` and the `propertyId` column on `Tasks`. This is a code-level change that drastically speeds up query performance.
+    *   **Read Replicas:** For our read-heavy dashboard, we will configure the database with a **Read Replica**. All write operations will go to the primary database, while read operations will be distributed to the replica, effectively doubling our read capacity.
+
+4.  **Containerization with Docker:** The entire application (backend, frontend) will be containerized using **Docker**. This ensures a consistent and reproducible environment across development, testing, and production, which is essential for reliable deployments.
+
+### Improvements for the Future
+
+*   **Robust Validation:** Implement comprehensive request validation using **Joi**. This library provides a powerful and declarative API to ensure data integrity at the API entry point, preventing bad data from ever reaching the business logic.
+*   **Authentication & Authorization:** Add user authentication with JWTs and a role-based access control (RBAC) system to secure the endpoints.
+*   **Unit & Integration Testing:** Write comprehensive tests using **Jest** as the testing framework and **Supertest** to test the API endpoints. This combination ensures code quality and prevents regressions.
+*   **CI/CD Pipeline:** Set up a CI/CD pipeline using **GitHub Actions** to automate the testing and deployment process whenever new code is pushed to the main branch.
+
+## Deployment on AWS
+
+The following architecture is designed to be scalable, secure, and cost-effective for handling 1,000+ properties using managed AWS services to reduce operational overhead.
+
+| Component | AWS Service(s)                                   | Description                                                                                                                             |
+| :-------- | :----------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
+| **Frontend**  | **S3** + **CloudFront**                          | The React application will be deployed as static files to an AWS S3 bucket. AWS CloudFront will serve as the CDN to distribute it globally, providing low latency and a free SSL certificate. |
+| **Backend**   | **ECS with Fargate** + **Application Load Balancer** | The Node.js backend will be run as Docker containers on AWS ECS with Fargate. Fargate is "serverless," so we don't manage servers. The Application Load Balancer will distribute traffic across multiple containers for high availability. |
+| **Database**  | **RDS for PostgreSQL**                           | We will use Amazon RDS, a managed database service. This handles backups, patching, and security. We can easily enable Multi-AZ for failover and add Read Replicas for scalability. |
+| **Caching**   | **ElastiCache for Redis**                        | A managed Redis service that provides a high-performance caching layer for our backend.                                                  |
+| **Queuing**   | **SQS (Simple Queue Service)**                   | A fully managed message queue for decoupling background tasks from the main API, ensuring reliability and responsiveness.                  |
+
+## Deployment Cost Estimation
+
+**Disclaimer:** The following is a **rough estimate** for a production environment handling over 1,000 properties with moderate traffic. Actual costs will vary based on user activity, data storage, and specific configurations.
+
+This estimate assumes a highly available setup with separate resources for the API and background workers.
+
+| Service                               | Configuration Assumption                                       | Estimated Monthly Cost | Estimated Yearly Cost |
+| :------------------------------------ | :------------------------------------------------------------- | :--------------------- | :-------------------- |
+| **ECS on AWS Fargate** (Backend)      | 2 containers (1 API, 1 worker), 1 vCPU / 2 GB RAM each         | ~$75 USD               | ~$900 USD             |
+| **RDS for PostgreSQL** (Database)     | 1 `db.t4g.medium` instance, 100 GB storage, Multi-AZ enabled   | ~$150 USD              | ~$1,800 USD           |
+| **ElastiCache for Redis** (Caching)   | 1 `cache.t4g.small` node                                       | ~$40 USD               | ~$480 USD             |
+| **Application Load Balancer**         | Standard processing for moderate traffic                       | ~$25 USD               | ~$300 USD             |
+| **S3 + CloudFront** (Frontend)        | Standard storage and data transfer                             | ~$5 USD                | ~$60 USD              |
+| **AWS SQS** (Queuing)                 | Likely covered by the perpetual free tier (1M requests/month)  | $0 USD                 | $0 USD                |
+| **Data Transfer & Other**             | General egress and NAT Gateway costs                           | ~$20 USD               | ~$240 USD             |
+| **Total Estimated Cost**              |                                                                | **~$315 USD / Month**  | **~$3,780 USD / Year**|
