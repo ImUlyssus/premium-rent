@@ -5,9 +5,6 @@ const path = require('path');
 const Sequelize = require('sequelize');
 const basename = path.basename(__filename);
 const env = process.env.NODE_ENV || 'development';
-
-// This is the line you correctly identified to change.
-// It now requires our JavaScript config file.
 const config = require(__dirname + '/../config/config.js')[env];
 
 const db = {};
@@ -39,7 +36,7 @@ fs
   });
 
 // This part runs the .associate() method from each model,
-// which is how you will set up relationships like .hasMany() and .belongsTo().
+// which is how we will set up relationships like .hasMany() and .belongsTo().
 Object.keys(db).forEach(modelName => {
   if (db[modelName].associate) {
     db[modelName].associate(db);

@@ -22,9 +22,11 @@ module.exports = {
         type: Sequelize.DECIMAL
       },
       status: {
-        type: Sequelize.ENUM('occupied', 'vacant', 'maintenance'),
-        allowNull: false
-      },
+  type: Sequelize.ENUM('occupied', 'vacant', 'maintenance'),
+  allowNull: false,
+  defaultValue: 'vacant',
+},
+
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE

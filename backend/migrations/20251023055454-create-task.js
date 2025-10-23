@@ -14,20 +14,29 @@ module.exports = {
       },
       type: {
         type: Sequelize.ENUM('cleaning', 'maintenance', 'inspection'),
-        allowNull: false
-      },
-      assignedPerson: {
-        type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       status: {
         type: Sequelize.ENUM('pending', 'in progress', 'done'),
         allowNull: false,
-        defaultValue: 'pending'
+        defaultValue: 'pending',
+      },
+
+      assignedPerson: {
+        type: Sequelize.STRING
       },
       date: {
-        type: Sequelize.DATE,
-        allowNull: false
+        type: Sequelize.DATE
+      },
+      propertyId: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'Properties',
+          key: 'id',
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE',
       },
       createdAt: {
         allowNull: false,
