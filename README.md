@@ -195,3 +195,31 @@ This estimate assumes a highly available setup with separate resources for the A
 | **AWS SQS** (Queuing)                 | Likely covered by the perpetual free tier (1M requests/month)  | $0 USD                 | $0 USD                |
 | **Data Transfer & Other**             | General egress and NAT Gateway costs                           | ~$20 USD               | ~$240 USD             |
 | **Total Estimated Cost**              |                                                                | **~$315 USD / Month**  | **~$3,780 USD / Year**|
+
+## Architecture Diagram
+
+Here is a high-level overview of the system architecture:
+
+![System Architecture Diagram](https://github.com/ImUlyssus/premium-rent/blob/main/Proposed_Architecture-2025-10-24-150504.png "High-level system architecture")
+
+## Architecture Overview
+
+This system architecture is designed for a highly available and scalable application, separating concerns into distinct zones to optimize performance, manageability, and cost. It handles both synchronous user-facing requests and asynchronous background tasks efficiently.
+
+### 1. Edge & Client Zone
+
+The journey begins in the **Edge & Client Zone**, which serves as the primary entry point for all users. When a user accesses the application, their **Browser** first interacts with **AWS CloudFront**, a global Content Delivery Network (CDN). CloudFront plays a dual role: it efficiently delivers the static files (HTML, CSS, JavaScript) of the React frontend application, which are stored in an **AWS S3 bucket designated for the Frontend**. Once the React application is loaded, any subsequent API calls (e.g., fetching property data) made by the browser are also routed through CloudFront, which then intelligently forwards these dynamic requests to the backend.
+
+### 2. Synchronous Backend Zone
+
+Incoming API requests from CloudFront are directed to the **Synchronous Backend Zone**. Here, an **Application Load Balancer (ALB)** distributes these requests across multiple instances of your API service running on **AWS ECS on Fargate**. This setup ensures high availability and horizontal scalability, allowing the system to handle varying loads seamlessly. The API Service, typically a Node.js application, acts as the central orchestrator for synchronous operations. It processes user requests, interacting with the Data Zone to retrieve or store information, and delegates time-consuming tasks to the Asynchronous Zone, ensuring a quick response back to the user. It also handles the generation of pre-signed URLs for direct photo uploads to S3.
+
+### 3. Data & Storage Zone
+
+The **Data & Storage Zone** is the persistent heart of the application, housing all critical data. It features **AWS RDS for PostgreSQL**, configured with a **Primary DB** for all write operations (like creating new entries or updating existing ones) and a **Read Replica** to offload and scale read-heavy queries (such as listing properties). This separation enhances database performance and reliability. For faster data retrieval, **AWS ElastiCache for Redis** serves as an in-memory cache, reducing the load on the database for frequently accessed information. User-generated content, specifically photos, are stored in a dedicated **AWS S3 bucket for Photos/Uploads**. A key optimization here is that the user's browser, after receiving a temporary pre-signed URL from the API, uploads photos directly to this S3 bucket, bypassing the backend API and freeing up its resources.
+
+### 4. Asynchronous Backend Zone
+
+Tasks that don't require an immediate response to the user are handled by the **Asynchronous Backend Zone**. The API Service dispatches these tasks as messages to **AWS SQS (Simple Queue Service)**, a managed message queuing service. This allows the API to quickly respond to the user while the background work proceeds independently. A separate **Worker Service**, also running on **AWS ECS on Fargate**, constantly polls the SQS queue for new messages. Upon receiving a message, the Worker Service processes the task, which often involves performing operations like complex data processing or sending notifications, typically interacting with the RDS Primary DB to update data. This asynchronous pattern significantly improves the responsiveness and scalability of the overall system.
+
+In summary, these zones work in concert: the Edge & Client Zone provides a fast user experience, the Synchronous Backend handles immediate requests, the Data & Storage Zone ensures data persistence and fast access, and the Asynchronous Backend efficiently manages background operations, all contributing to a robust and scalable application.
